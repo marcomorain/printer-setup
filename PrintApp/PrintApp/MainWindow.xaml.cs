@@ -1,17 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using System.Drawing;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Drawing.Printing;
 
 namespace PrintApp
@@ -27,8 +17,63 @@ namespace PrintApp
 
             foreach (string printer in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
             {
-                MessageBox.Show(printer);
+                Console.WriteLine(string.Format("Printer: {0}", printer));
             }
+            _file = new System.Diagnostics.StackTrace(true).GetFrame(0).GetFileName();
+
+            Console.WriteLine(_file);
+        }
+
+        private StreamReader _stream;
+        private Font _font;
+        private readonly string _file;
+
+        private void button_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+               _stream  = new StreamReader(_file);
+                try
+                {
+                    _font = new Font("Arial", 10);
+                    PrintDocument pd = new PrintDocument();
+                    Console.WriteLine(pd.PrinterSettings.PrinterName);
+                    pd.PrintPage += new PrintPageEventHandler(this.PrintPage);
+                    pd.Print();
+                }
+                finally
+                {
+                    _stream.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void PrintPage(object sender, PrintPageEventArgs ev)
+        {
+            var count = 0;
+            float leftMargin = ev.MarginBounds.Left;
+            float topMargin = ev.MarginBounds.Top;
+            string line = null;
+
+            // Calculate the number of lines per page.
+           float linesPerPage = ev.MarginBounds.Height / _font.GetHeight(ev.Graphics);
+
+            // Print each line of the file.
+            while (count < linesPerPage &&
+               ((line = _stream.ReadLine()) != null))
+            {
+                var yPos = topMargin + (count * _font.GetHeight(ev.Graphics));
+                ev.Graphics.DrawString(line, _font, Brushes.Black,
+                   leftMargin, yPos, new StringFormat());
+                count++;
+            }
+
+            // If more lines exist, print another page.
+            ev.HasMorePages = line != null;
         }
     }
 }
